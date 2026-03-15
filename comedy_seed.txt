@@ -1,0 +1,1 @@
+So I tried using AI to write code for me. It's like hiring an intern who's read every textbook ever written but has never touched a computer. "Here's your code!" Great, it doesn't run. "Let me fix that!" Now it doesn't run differently.

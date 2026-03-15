@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>autoship</title>
+    <meta
+      name="description"
+      content="Describe a web app, let Codex or Claude build it, and get back a live autoship.fun subdomain."
+    />
+    <meta name="theme-color" content="#f2efe8" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="autoship" />
+    <meta property="og:title" content="autoship" />
+    <meta
+      property="og:description"
+      content="Describe a web app, let Codex or Claude build it, and get back a live autoship.fun subdomain."
+    />
+    <meta property="og:url" content="https://autoship.fun/" />
+    <meta property="og:image" content="https://autoship.fun/og-card.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="autoship" />
+    <meta
+      name="twitter:description"
+      content="Describe a web app, let Codex or Claude build it, and get back a live autoship.fun subdomain."
+    />
+    <meta name="twitter:image" content="https://autoship.fun/og-card.svg" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/">autoship</a>
+        <nav class="topnav">
+          <a href="#how">How It Works</a>
+          <a href="#use">Usage</a>
+          <a href="#notes">Notes</a>
+          <a href="https://github.com/ranausmanai/autoship" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Open-source overnight app shipper</p>
+            <h1>Describe an app. Let the model build it. Get back a live URL.</h1>
+            <p class="lede">
+              <strong>autoship</strong> reads a product spec, infers only the capabilities the app needs,
+              asks <strong>Codex</strong> or <strong>Claude</strong> to build it, then deploys it to
+              <code>&lt;slug&gt;.autoship.fun</code>.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="https://github.com/ranausmanai/autoship" target="_blank" rel="noreferrer">Open GitHub</a>
+              <a class="button secondary" href="#use">See the command</a>
+            </div>
+          </div>
+
+          <aside class="terminal-card" aria-label="Example autoship run">
+            <div class="terminal-bar">
+              <span></span><span></span><span></span>
+            </div>
+            <pre><code>$ python3 autoship.py spec.md -e codex --deploy autoship --slug my-app
+
+[1/4] Planning...          saas / Flask
+        caps: db=sqlite, auth=local, email=none, storage=local
+[2/4] Building...
+[3/4] Deploying...         https://my-app.autoship.fun
+
+LIVE URL:  https://my-app.autoship.fun</code></pre>
+          </aside>
+        </section>
+
+        <section class="grid" id="how">
+          <article class="panel">
+            <p class="panel-kicker">What It Does</p>
+            <h2>Capability-aware by default</h2>
+            <p>
+              autoship does not blindly stuff auth and databases into every app. It plans first, infers
+              whether the spec needs things like local auth, SQLite, uploads, or an admin panel, and only
+              builds those parts when they are justified.
+            </p>
+            <div class="chip-row">
+              <span>auth</span>
+              <span>sqlite</span>
+              <span>uploads</span>
+              <span>admin</span>
+              <span>api</span>
+              <span>jobs</span>
+            </div>
+          </article>
+
+          <article class="panel">
+            <p class="panel-kicker">What Gets Shipped</p>
+            <h2>From spec to running app</h2>
+            <ol class="steps">
+              <li>You write a markdown spec.</li>
+              <li>The planner chooses the smallest viable stack.</li>
+              <li>Codex or Claude builds the app and deploy contract.</li>
+              <li>autoship deploys it and returns a live subdomain.</li>
+            </ol>
+          </article>
+        </section>
+
+        <section class="split" id="use">
+          <article class="panel wide">
+            <p class="panel-kicker">Usage</p>
+            <h2>Login once, then deploy</h2>
+            <pre><code>git clone https://github.com/ranausmanai/autoship
+cd autoship/autoship
+
+python3 autoship.py login --code SHIP-ABC123
+python3 autoship.py spec.md -e codex --deploy autoship --slug my-app</code></pre>
+            <p class="small">
+              You need an invite code once, plus either the <code>codex</code> CLI or <code>claude</code> CLI installed locally.
+              After login, autoship stores your deploy token locally and future deploys just use <code>--deploy autoship</code>.
+            </p>
+          </article>
+
+          <article class="panel wide">
+            <p class="panel-kicker">Spec Example</p>
+            <h2>Keep the input simple</h2>
+            <pre><code># Habit tracker
+
+Build a small web app where users can:
+- create an account
+- track daily habits
+- view a dashboard of streaks
+
+Use the simplest stack that works.
+Make it clean and mobile-friendly.</code></pre>
+          </article>
+        </section>
+
+        <section class="grid" id="notes">
+          <article class="panel">
+            <p class="panel-kicker">Getting Access</p>
+            <h2>Invite-code beta</h2>
+            <p>
+              autoship.fun hosted deploy is running as an invite-code beta. You claim a one-time code with
+              <code>autoship login</code>, the CLI stores your deploy token locally, and then regular deploys
+              no longer need environment variables.
+            </p>
+          </article>
+
+          <article class="panel">
+            <p class="panel-kicker">Turnkey Scope</p>
+            <h2>What works best right now</h2>
+            <p>
+              autoship is strongest for local-first apps: static sites, lightweight SaaS apps, SQLite-backed
+              dashboards, forms, and tools that do not depend on third-party provider credentials.
+            </p>
+          </article>
+
+          <article class="panel">
+            <p class="panel-kicker">Non-turnkey Cases</p>
+            <h2>Where automation stops</h2>
+            <p>
+              If your spec explicitly requires Stripe, OAuth, external email, or other managed services,
+              autoship can still plan and build the app, but those provider secrets still have to come from
+              somewhere real.
+            </p>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

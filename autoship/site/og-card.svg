@@ -1,0 +1,55 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="68" y1="42" x2="1111" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF5E8"/>
+      <stop offset="1" stop-color="#F1EFE9"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(202 102) rotate(36.9462) scale(274.946 205.827)">
+      <stop stop-color="#F39364" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#F39364" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(998 530) rotate(-166.156) scale(290.375 202.786)">
+      <stop stop-color="#BED4C4" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#BED4C4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" rx="32" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1152" height="582" rx="28" stroke="#D5CBBB" stroke-width="2"/>
+  <ellipse cx="202" cy="102" rx="286" ry="214" fill="url(#glow1)"/>
+  <ellipse cx="998" cy="530" rx="310" ry="216" fill="url(#glow2)"/>
+
+  <rect x="72" y="74" width="164" height="56" rx="28" fill="#FFFDF8" stroke="#D8D0C4"/>
+  <text x="112" y="110" fill="#AA391A" font-size="24" font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing="4">AUTOSHIP</text>
+
+  <text x="72" y="238" fill="#172227" font-size="84" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    Describe an app.
+  </text>
+  <text x="72" y="330" fill="#172227" font-size="84" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    Let the model build it.
+  </text>
+  <text x="72" y="422" fill="#172227" font-size="84" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    Get a live URL.
+  </text>
+
+  <text x="74" y="498" fill="#4F5D75" font-size="32" font-family="Arial, Helvetica, sans-serif">
+    Open-source overnight app shipper powered by Codex or Claude.
+  </text>
+  <text x="74" y="545" fill="#4F5D75" font-size="32" font-family="Arial, Helvetica, sans-serif">
+    Capability-aware builds. Hosted deploys to autoship.fun.
+  </text>
+
+  <g transform="translate(821 120)">
+    <rect width="308" height="380" rx="28" fill="#161A1F"/>
+    <rect x="1" y="1" width="306" height="378" rx="27" stroke="#2F3941" stroke-width="2"/>
+    <circle cx="32" cy="31" r="8" fill="#FF7A59"/>
+    <circle cx="57" cy="31" r="8" fill="#FFCF4A"/>
+    <circle cx="82" cy="31" r="8" fill="#34D399"/>
+    <text x="28" y="92" fill="#F4F8FB" font-size="23" font-family="Courier New, monospace">$ autoship spec.md</text>
+    <text x="28" y="124" fill="#F4F8FB" font-size="23" font-family="Courier New, monospace">  -e codex</text>
+    <text x="28" y="156" fill="#F4F8FB" font-size="23" font-family="Courier New, monospace">  --deploy autoship</text>
+    <text x="28" y="224" fill="#8BB6FF" font-size="20" font-family="Courier New, monospace">[1/4] Planning...</text>
+    <text x="28" y="256" fill="#8BB6FF" font-size="20" font-family="Courier New, monospace">[2/4] Building...</text>
+    <text x="28" y="288" fill="#8BB6FF" font-size="20" font-family="Courier New, monospace">[3/4] Deploying...</text>
+    <text x="28" y="338" fill="#D8F3E6" font-size="21" font-family="Courier New, monospace">https://my-app.autoship.fun</text>
+  </g>
+</svg>

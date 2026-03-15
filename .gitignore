@@ -1,0 +1,36 @@
+__pycache__/
+*.pyc
+.DS_Store
+.opticode/
+*.egg-info/
+.venv/
+node_modules/
+
+# build outputs from autoship
+autoship/ship_*/
+autoship/plan_test_out/
+autoship/hosted_api/
+autoapi/api_*/
+
+# build outputs from autopilot
+autopilot/plugins/ship_*/
+
+# evolution artifacts
+*_evolved.*
+*_seed_evolved.*
+
+# test files
+test_*.py
+2026-*.txt
+
+# personal config (copy config.example.json to config.json and fill in)
+autopilot/plugins/tools/config.json
+
+# AutoPrompt is a separate repo (github.com/ranausmanai/AutoPrompt)
+AutoPrompt/
+
+# local state
+~/.autopilot/
+
+# claude artifacts
+.claude/
