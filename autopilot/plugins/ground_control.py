@@ -926,6 +926,21 @@ Self-improvement (create reusable tools and skills):
 ACTION: {{"type": "create_tool", "name": "tool_name.py", "code": "#!/usr/bin/env python3\\n..."}}
 ACTION: {{"type": "create_skill", "name": "skill_name.md", "content": "# Skill Name\\n..."}}
 
+Codebase access (read, browse, and edit your own source code):
+ACTION: {{"type": "read_file", "path": "plugins/tools/twitter_engine.py"}}
+ACTION: {{"type": "read_file", "path": "plugins/tools/twitter_engine.py", "start_line": 100, "end_line": 150}}
+ACTION: {{"type": "list_files", "path": "plugins/tools"}}
+ACTION: {{"type": "list_files", "path": "."}}
+ACTION: {{"type": "edit_code", "instruction": "Add a quality check to the engage function in twitter_engine.py that rejects generic replies"}}
+
+edit_code is POWERFUL: it spawns Claude Code as a coding agent against the codebase. Use it for:
+- Fixing bugs in existing tools (twitter, job hunter, etc.)
+- Adding features the user asks for
+- Refactoring or improving code quality
+- Any change that touches multiple files or requires understanding existing code
+After edit_code changes, use restart to pick up the new code.
+Prefer edit_code over create_tool when modifying existing files. create_tool is for brand new scripts only.
+
 Job hunting (built-in, no skill loading needed — use these directly):
 ACTION: {{"type": "job_search", "keywords": "", "limit": 10, "min_score": 10}}
 ACTION: {{"type": "job_apply", "url": "https://job-boards.greenhouse.io/company/jobs/123", "dry_run": false}}
@@ -1853,6 +1868,116 @@ def create_bot(token, channel_id, owner_id, engine="codex", model="gpt-5.4", rea
                             f"New skill loaded. I'll remember this for next time.",
                             color=0x2ea043,
                         ))
+
+                elif action_type == "read_file":
+                    rel_path = action.get("path", "")
+                    start_line = action.get("start_line")
+                    end_line = action.get("end_line")
+                    if rel_path:
+                        base = Path(__file__).resolve().parent
+                        full_path = (base / rel_path).resolve()
+                        # security: only allow reading within the redbee tree
+                        redbee_root = base.parent.parent
+                        if not str(full_path).startswith(str(redbee_root)):
+                            await message.channel.send("`Access denied: path outside codebase`")
+                        elif not full_path.exists():
+                            run_outputs.append(f"read_file {rel_path}: FILE NOT FOUND")
+                        elif full_path.is_dir():
+                            run_outputs.append(f"read_file {rel_path}: is a directory, use list_files instead")
+                        else:
+                            try:
+                                lines = full_path.read_text(errors="replace").splitlines()
+                                if start_line and end_line:
+                                    lines = lines[max(0, start_line-1):end_line]
+                                    label = f"{rel_path} (lines {start_line}-{end_line})"
+                                else:
+                                    label = f"{rel_path} ({len(lines)} lines)"
+                                content_str = "\n".join(f"{i+1:4d}  {l}" for i, l in enumerate(lines))
+                                if len(content_str) > 3000:
+                                    content_str = content_str[:3000] + "\n... (truncated, use start_line/end_line to read specific sections)"
+                                await message.channel.send(f"```py\n# {label}\n{content_str}\n```")
+                                run_outputs.append(f"read_file {label}:\n{content_str}")
+                            except Exception as e:
+                                run_outputs.append(f"read_file {rel_path}: ERROR: {e}")
+
+                elif action_type == "list_files":
+                    rel_path = action.get("path", ".")
+                    base = Path(__file__).resolve().parent
+                    full_path = (base / rel_path).resolve()
+                    redbee_root = base.parent.parent
+                    if not str(full_path).startswith(str(redbee_root)):
+                        await message.channel.send("`Access denied: path outside codebase`")
+                    elif full_path.is_dir():
+                        entries = []
+                        for item in sorted(full_path.iterdir()):
+                            if item.name.startswith(".") or item.name == "__pycache__":
+                                continue
+                            prefix = "d " if item.is_dir() else "f "
+                            size = f" ({item.stat().st_size:,}b)" if item.is_file() else ""
+                            entries.append(f"{prefix}{item.name}{size}")
+                        listing = "\n".join(entries) or "(empty)"
+                        await message.channel.send(f"```\n{rel_path}/\n{listing}\n```")
+                        run_outputs.append(f"list_files {rel_path}:\n{listing}")
+                    else:
+                        run_outputs.append(f"list_files {rel_path}: not a directory")
+
+                elif action_type == "edit_code":
+                    instruction = action.get("instruction", "")
+                    if instruction:
+                        redbee_root = Path(__file__).resolve().parent.parent.parent
+                        await message.channel.send(embed=make_embed(
+                            "Editing codebase...",
+                            f"```\n{instruction[:500]}\n```\nSpawning Claude Code agent...",
+                            color=0xa78bfa,
+                        ))
+                        env = os.environ.copy()
+                        env.pop("CLAUDECODE", None)
+                        edit_prompt = (
+                            f"You are editing the RedBee codebase. Working directory: {redbee_root}\n\n"
+                            f"INSTRUCTION: {instruction}\n\n"
+                            f"Rules:\n"
+                            f"- Read the relevant files first to understand the existing code\n"
+                            f"- Make minimal, focused changes — do not refactor unrelated code\n"
+                            f"- Test that Python files parse correctly (python3 -c 'import ast; ast.parse(open(f).read())')\n"
+                            f"- Do NOT modify config.json (it contains personal data)\n"
+                            f"- When done, print a short summary of what you changed\n"
+                        )
+                        try:
+                            result = await loop.run_in_executor(
+                                None, lambda: subprocess.run(
+                                    ["claude", "-p", edit_prompt,
+                                     "--allowedTools", "Bash,Write,Read,Edit,Glob,Grep",
+                                     "--dangerously-skip-permissions",
+                                     "--no-session-persistence"],
+                                    cwd=str(redbee_root), env=env,
+                                    capture_output=True, text=True, timeout=300,
+                                )
+                            )
+                            output = result.stdout.strip()
+                            if len(output) > 1800:
+                                output = output[:1800] + "\n... (truncated)"
+                            status = "Done" if result.returncode == 0 else f"Failed (exit {result.returncode})"
+                            await message.channel.send(embed=make_embed(
+                                f"Code Edit: {status}",
+                                f"```\n{output[-1500:]}\n```",
+                                color=0x2ea043 if result.returncode == 0 else 0xda3633,
+                            ))
+                            run_outputs.append(f"edit_code: {status}\n{output}")
+                            if result.returncode == 0:
+                                run_outputs.append(
+                                    "Code was modified. If you want changes to take effect, "
+                                    "use the restart action. Tell the user what was changed first."
+                                )
+                        except subprocess.TimeoutExpired:
+                            await message.channel.send(embed=make_embed(
+                                "Code Edit: Timed Out",
+                                "Claude Code agent took too long (5 min limit). Try a simpler instruction.",
+                                color=0xda3633,
+                            ))
+                            run_outputs.append("edit_code: TIMED OUT after 5 minutes")
+                        except Exception as e:
+                            await message.channel.send(f"`edit_code error: {e}`")
+                            run_outputs.append(f"edit_code: ERROR: {e}")
 
                 elif action_type == "cron_create":
                     plan = action.get("plan", {})
