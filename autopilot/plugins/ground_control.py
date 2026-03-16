@@ -441,7 +441,10 @@ class CronScheduler:
             if step_type == "run":
                 cmd = step.get("command", "")
                 for k, v in variables.items():
-                    cmd = cmd.replace(f"{{{k}}}", str(v))
+                    # sanitize variable values for safe shell injection:
+                    # strip quotes, backslashes, and other shell-breaking chars
+                    safe_v = str(v).replace('"', '').replace("'", "").replace("\\", "").replace("`", "")
+                    cmd = cmd.replace(f"{{{k}}}", safe_v)
                 try:
                     result = await loop.run_in_executor(
                         None, lambda c=cmd: self._run_cmd(c)
