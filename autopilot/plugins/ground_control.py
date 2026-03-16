@@ -229,27 +229,87 @@ def eval_condition(expr, variables):
 
 # ─── Cron Scheduler ─────────────────────────────────────────────────────────
 
-def parse_cron_schedule(schedule):
-    """Minimal cron-like parser. Returns seconds between runs.
+DAYS_OF_WEEK = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+                "friday": 4, "saturday": 5, "sunday": 6}
 
-    Supports: 'every Xm', 'every Xh', 'every Xd', 'daily HH:MM', 'hourly'.
-    """
+# Timezone offsets from UTC (hours). Add more as needed.
+TZ_OFFSETS = {"et": -5, "est": -5, "edt": -4, "ct": -6, "cst": -6, "cdt": -5,
+              "pt": -8, "pst": -8, "pdt": -7, "utc": 0, "gmt": 0, "pkt": 5}
+
+
+def _parse_time_and_tz(s):
+    """Extract (hour, minute, tz_offset_hours) from a schedule string.
+    Returns (None, None, 0) if no time found."""
+    # match patterns like "9am", "10:30am", "14:00", "9am ET"
+    m = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*([a-z]{2,4})?\s*$', s)
+    if not m:
+        return None, None, 0
+    hour = int(m.group(1))
+    minute = int(m.group(2) or 0)
+    ampm = m.group(3)
+    tz = m.group(4)
+    if ampm == "pm" and hour != 12:
+        hour += 12
+    elif ampm == "am" and hour == 12:
+        hour = 0
+    tz_offset = TZ_OFFSETS.get(tz, 0) if tz else 0
+    return hour, minute, tz_offset
+
+
+def is_schedule_due(schedule, last_run_ts):
+    """Check if a cron schedule is due given the last run timestamp.
+    Returns True if it should run now."""
     s = schedule.strip().lower()
+    now = time.time()
+
+    # "every Xm/h/d" — simple interval
     m = re.match(r'every\s+(\d+)\s*m(?:in(?:ute)?s?)?$', s)
     if m:
-        return int(m.group(1)) * 60
+        return now - last_run_ts >= int(m.group(1)) * 60
     m = re.match(r'every\s+(\d+)\s*h(?:ours?)?$', s)
     if m:
-        return int(m.group(1)) * 3600
+        return now - last_run_ts >= int(m.group(1)) * 3600
     m = re.match(r'every\s+(\d+)\s*d(?:ays?)?$', s)
     if m:
-        return int(m.group(1)) * 86400
+        return now - last_run_ts >= int(m.group(1)) * 86400
     if s == "hourly":
-        return 3600
-    if s.startswith("daily"):
-        return 86400
-    # default: every 60 min
-    return 3600
+        return now - last_run_ts >= 3600
+
+    # Time-aware schedules: "daily 9am ET", "weekly tuesday 10am ET"
+    hour, minute, tz_offset = _parse_time_and_tz(s)
+    if hour is None:
+        # fallback: treat as daily
+        return now - last_run_ts >= 86400
+
+    # Convert current UTC time to target timezone
+    from datetime import datetime, timezone, timedelta
+    utc_now = datetime.now(timezone.utc)
+    target_tz = timezone(timedelta(hours=tz_offset))
+    local_now = utc_now.astimezone(target_tz)
+
+    # Check if it's the right day for weekly schedules
+    is_weekly = "weekly" in s
+    if is_weekly:
+        target_day = None
+        for day_name, day_num in DAYS_OF_WEEK.items():
+            if day_name in s:
+                target_day = day_num
+                break
+        if target_day is not None and local_now.weekday() != target_day:
+            return False
+
+    # Check if we're past the target time today
+    target_time_today = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if local_now < target_time_today:
+        return False  # not time yet
+
+    # Check we haven't already run today (or this week for weekly)
+    if last_run_ts > 0:
+        last_run_local = datetime.fromtimestamp(last_run_ts, tz=target_tz)
+        if last_run_local.date() == local_now.date():
+            return False  # already ran today
+
+    return True
 
 
 class CronScheduler:
@@ -339,9 +399,8 @@ class CronScheduler:
                 await loop.run_in_executor(None, self.memory.cleanup)
                 now = time.time()
                 for name, plan in list(self._plans.items()):
-                    interval = parse_cron_schedule(plan.get("schedule", "every 1h"))
                     last = self._last_run.get(name, 0)
-                    if now - last >= interval:
+                    if is_schedule_due(plan.get("schedule", "every 1h"), last):
                         self._last_run[name] = now
                         try:
                             await self._execute_plan(plan)
@@ -426,6 +485,9 @@ class CronScheduler:
                         None, lambda p=prompt, e=env: self._run_llm(p, e)
                     )
                     output = result.stdout.strip()
+                    # sanitize LLM output: strip markdown bold, quotes, extra whitespace
+                    output = re.sub(r'\*+', '', output)
+                    output = output.strip('"\'').strip()
                 except Exception as e:
                     output = f"error: {e}"
                 save_as = step.get("save_as")

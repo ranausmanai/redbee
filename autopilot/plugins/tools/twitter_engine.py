@@ -267,6 +267,23 @@ Return ONLY the tweet text. Nothing else."""
     if len(tweet) > 280:
         tweet = tweet[:277] + "..."
 
+    # Quality gate
+    qprompt = f"""Rate this tweet 1-10. Be brutal.
+
+Tweet: {tweet}
+
+Would a developer stop scrolling to read this? Does it share a real insight, not generic AI observations?
+Red flags (score 1-3): vague productivity takes, "I built X" without substance, AI motivational slop, diary entries.
+Reply with ONLY a number 1-10."""
+    try:
+        score = int(re.search(r'\d+', ask_llm(qprompt, model="haiku", timeout=30) or "0").group())
+    except:
+        score = 5
+    print(f"Quality score: {score}/10")
+    if score < 6:
+        print(f"Tweet rejected (score {score}/10) — not valuable enough. Skipping.")
+        return
+
     print(f"Tweet: {tweet}")
 
     if post:
@@ -315,6 +332,37 @@ Each tweet must be under 280 chars. Return ONLY the JSON array."""
 
     if not tweets or not isinstance(tweets, list):
         print(f"Failed to generate thread: {response[:200] if response else 'no response'}")
+        return
+
+    # Quality gate — reject threads that wouldn't add value
+    quality_prompt = f"""Rate this Twitter thread on a scale of 1-10. Be brutally honest.
+
+Thread:
+{chr(10).join(f'{i+1}. {t}' for i, t in enumerate(tweets))}
+
+Score based on:
+- Would a developer/engineer find this genuinely valuable or interesting? (not just relatable)
+- Does it share a specific insight, technique, result, or lesson? (not vague observations)
+- Does it sound like a real person with expertise? (not AI-generated filler)
+- Would you actually stop scrolling to read this? (not diary entries about rate limits or waiting)
+
+Red flags that mean score 1-3:
+- Talking about your own workflow without any transferable insight
+- "I built X" without explaining how or what you learned
+- Generic productivity observations anyone could write
+- Sounds like AI motivational content
+
+Reply with ONLY a number 1-10."""
+
+    score_response = ask_llm(quality_prompt, model="haiku", timeout=30)
+    try:
+        score = int(re.search(r'\d+', score_response or "0").group())
+    except:
+        score = 5
+    print(f"Quality score: {score}/10")
+
+    if score < 6:
+        print(f"Thread rejected (score {score}/10) — not valuable enough. Skipping.")
         return
 
     print(f"Thread ({len(tweets)} tweets):")
