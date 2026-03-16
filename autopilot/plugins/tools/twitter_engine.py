@@ -512,21 +512,45 @@ Return ONLY a JSON array of reply strings. One per tweet."""
 
     results = []
     for i, m in enumerate(matches):
-        m["reply"] = replies[i]
+        reply = replies[i]
+
+        # Quality gate — check each reply before posting
+        qprompt = f"""Rate this Twitter reply 1-10. Be brutal.
+
+Original tweet by @{m['author']}: {m['text'][:200]}
+
+Reply: {reply}
+
+Does this reply add genuine value to the conversation? Would the original author appreciate it?
+Red flags (score 1-3): generic "great point!", unsolicited repo promotion, restating what they said, AI-sounding platitudes, "this resonates", anything that reads like a bot.
+Good replies (score 7+): share specific experience, ask a smart follow-up question, offer a concrete insight they didn't mention, respectfully disagree with reasoning.
+Reply with ONLY a number 1-10."""
+        try:
+            score = int(re.search(r'\d+', ask_llm(qprompt, model="haiku", timeout=30) or "0").group())
+        except:
+            score = 5
+        print(f"  @{m['author']} quality: {score}/10")
+
+        if score < 6:
+            results.append(f"  @{m['author']} -> SKIPPED (quality {score}/10)")
+            replied_ids.add(m["tweet_id"])  # mark as handled so we don't retry
+            continue
+
+        m["reply"] = reply
 
         if post:
-            r = sh(["twitter", "reply", m["tweet_id"], replies[i]])
+            r = sh(["twitter", "reply", m["tweet_id"], reply])
             if r.returncode == 0:
                 replied_ids.add(m["tweet_id"])
-                results.append(f"  @{m['author']} -> {m.get('repo', 'no repo')} (posted)")
-                results.append(f"    {replies[i]}")
-                track_tweet("engage", replies[i], m["tweet_id"])
+                results.append(f"  @{m['author']} -> {m.get('repo', 'no repo')} (posted, quality {score}/10)")
+                results.append(f"    {reply}")
+                track_tweet("engage", reply, m["tweet_id"])
             else:
                 results.append(f"  @{m['author']} -> FAILED")
             time.sleep(3)  # rate limit
         else:
-            results.append(f"  @{m['author']} -> {m.get('repo', 'no repo')}")
-            results.append(f"    {replies[i]}")
+            results.append(f"  @{m['author']} -> {m.get('repo', 'no repo')} (quality {score}/10)")
+            results.append(f"    {reply}")
 
     if post:
         save_history(replied_ids)
@@ -627,18 +651,41 @@ Return ONLY a JSON array of reply strings."""
 
     results = []
     for i, m in enumerate(mentions[:len(replies)]):
+        reply = replies[i]
+
+        # Quality gate
+        qprompt = f"""Rate this Twitter reply 1-10. Be brutal.
+
+They said: {m['text'][:200]}
+Your reply: {reply}
+
+Does this add value? Would they want to continue the conversation?
+Red flags (score 1-3): "thanks!", generic acknowledgment, restating their point, AI filler.
+Good replies (score 7+): answer their question directly, share something specific, be genuinely helpful or funny.
+Reply with ONLY a number 1-10."""
+        try:
+            score = int(re.search(r'\d+', ask_llm(qprompt, model="haiku", timeout=30) or "0").group())
+        except:
+            score = 5
+        print(f"  @{m['author']} quality: {score}/10")
+
+        if score < 6:
+            results.append(f"  @{m['author']} -> SKIPPED (quality {score}/10)")
+            replied_ids.add(m["id"])  # mark handled
+            continue
+
         if post:
-            r = sh(["twitter", "reply", m["id"], replies[i]])
+            r = sh(["twitter", "reply", m["id"], reply])
             if r.returncode == 0:
                 replied_ids.add(m["id"])
-                results.append(f"  replied to @{m['author']}: {replies[i][:80]}")
-                track_tweet("reply-back", replies[i], m["id"])
+                results.append(f"  replied to @{m['author']} (quality {score}/10): {reply[:80]}")
+                track_tweet("reply-back", reply, m["id"])
             else:
                 results.append(f"  FAILED @{m['author']}")
             time.sleep(3)
         else:
             results.append(f"  @{m['author']}: {m['text'][:60]}")
-            results.append(f"    -> {replies[i]}")
+            results.append(f"    -> (quality {score}/10) {reply}")
 
     if post:
         save_history(replied_ids)
