@@ -25,11 +25,22 @@ A cron plan is a JSON object with steps that execute sequentially:
 
 ## Schedule formats
 
+Interval-based (runs every X from last run):
 - `every 5m` — every 5 minutes
 - `every 6h` — every 6 hours
 - `every 1d` — daily
 - `hourly` — every hour
-- `daily` — once per day
+
+Time-of-day (runs once per day at a specific time):
+- `daily 9am ET` — every day at 9am Eastern
+- `daily 2pm PKT` — every day at 2pm Pakistan time
+- `daily 10:30am UTC` — every day at 10:30am UTC
+
+Weekly (runs once per week on a specific day and time):
+- `weekly tuesday 10am ET` — every Tuesday at 10am Eastern
+- `weekly monday 9am PKT` — every Monday at 9am Pakistan time
+
+Supported timezones: ET, EST, EDT, CT, CST, CDT, PT, PST, PDT, UTC, GMT, PKT
 
 ## Step types
 
